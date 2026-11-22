@@ -26,7 +26,7 @@ When adding support for new versions, update these values and test with
 def minSupportedVersion : (Nat × Nat × Nat) := (4, 24, 0)
 
 /-- Maximum supported Lean version for doc-verification-bridge -/
-def maxSupportedVersion : (Nat × Nat × Nat) := (4, 31, 0)
+def maxSupportedVersion : (Nat × Nat × Nat) := (4, 36, 0)
 
 /-! ## Configuration Types -/
 
@@ -1251,7 +1251,9 @@ def extractVersionTag (toolchain : String) : String :=
 def checkToolchainCompatibility (projectDir : FilePath) (dvbPath : FilePath)
     : IO ToolchainCheck := do
   let projectTc ← readToolchain (projectDir / "lean-toolchain")
-  let dvbTc ← readToolchain (dvbPath / "lean-toolchain")
+  -- The package lives in the `DocVerificationBridge` subdirectory since v4.29.0.
+  let nestedTc ← readToolchain (dvbPath / "DocVerificationBridge" / "lean-toolchain")
+  let dvbTc ← if nestedTc.isSome then pure nestedTc else readToolchain (dvbPath / "lean-toolchain")
 
   let projectStr := projectTc.getD "unknown"
   let dvbStr := dvbTc.getD "unknown"
