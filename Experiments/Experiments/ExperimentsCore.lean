@@ -1430,8 +1430,6 @@ def cloneDocVerificationBridgeImpl (repoUrl : String) (targetDir : FilePath) (ve
 def cloneDocVerificationBridge (repoUrl : String) (targetDir : FilePath) (version : String) : IO Bool := do
   -- Use lock file to prevent concurrent git operations on the same cache directory
   let lockPath := (targetDir.toString ++ ".lock")
-  -- A ref such as `feature/x` nests the cache directory; the lock file needs its parent.
-  if let some parent := targetDir.parent then IO.FS.createDirAll parent
 
   -- Try to acquire lock (wait up to 60 seconds with retries)
   IO.println s!"[DocVB] Acquiring lock for {targetDir}..."
@@ -1525,7 +1523,9 @@ def setupDocvbDirectory (projectDir : FilePath) (projectName : String)
   IO.FS.createDirAll docvbDir
 
   -- Clone or update DocVerificationBridge to a cache location
-  let cacheDir := config.reposDir / ".docvb-cache" / project.docvbVersion
+  -- Encode `/` so a ref such as `feature/x` maps to one flat directory per version.
+  let cacheName := project.docvbVersion.replace "%" "%25" |>.replace "/" "%2F"
+  let cacheDir := config.reposDir / ".docvb-cache" / cacheName
   IO.FS.createDirAll (config.reposDir / ".docvb-cache")
 
   let cloneOk ← cloneDocVerificationBridge config.docVerificationBridgeRepo cacheDir project.docvbVersion
