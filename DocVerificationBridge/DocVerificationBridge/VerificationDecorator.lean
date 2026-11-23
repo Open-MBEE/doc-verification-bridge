@@ -3,13 +3,10 @@
 
 import Lean
 import DocGen4.Output.Base
-import DocGen4.Output.ToHtmlFormat
 import DependencyAnalysis.Types
 import DependencyAnalysis.Classify
 
 open Lean DependencyAnalysis
-open scoped DocGen4.Jsx
-open DocGen4 (Html)
 open DocGen4.Output (DeclarationDecoratorFn)
 
 namespace DocVerificationBridge
@@ -115,8 +112,8 @@ def makeVerificationDecorator
       let url := moduleToVerificationUrl moduleName declName
       let cssClass := badgeCssClass badge
       #[
-        Html.element "div" false #[("class", "verification_link")] #[
-          Html.element "a" false
+        Html.element "div" #[("class", "verification_link")] #[
+          Html.element "a"
             #[("href", url), ("class", cssClass), ("title", tooltip)]
             #[Html.text s!"{symbol} coverage"]
         ]

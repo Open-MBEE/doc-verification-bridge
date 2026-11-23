@@ -46,8 +46,8 @@ DocVerificationBridge depends on Lean and doc-gen4 APIs that have **breaking cha
 | Constant | Value | Location |
 |----------|-------|----------|
 | **Min supported** | 4.24.0 | `Experiments/Experiments/ExperimentsCore.lean` → `minSupportedVersion` |
-| **Max supported** | 4.30.0.0 | `Experiments/Experiments/ExperimentsCore.lean` → `maxSupportedVersion` |
-| **Current toolchain** | v4.29.0 | `DocVerificationBridge/lakefile.toml` → `leanVersion` |
+| **Max supported** | 4.36.0 | `Experiments/Experiments/ExperimentsCore.lean` → `maxSupportedVersion` |
+| **Current toolchain** | v4.36.0 | `DocVerificationBridge/lakefile.toml` → `leanVersion` |
 
 > **To add a new Lean version**: update `maxSupportedVersion` in ExperimentsCore.lean,
 > then follow the steps in [Adding Support for New Lean Versions](#adding-support-for-new-lean-versions).

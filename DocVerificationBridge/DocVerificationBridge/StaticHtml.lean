@@ -4,7 +4,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Nicolas Rouquette
 -/
 import Lean
-import DocGen4.Output.ToHtmlFormat
 import DocGen4.Output.Base
 import DocGen4.Process.Analyze
 import DependencyAnalysis.Classify
@@ -36,8 +35,7 @@ It generates styled HTML output with parallel HTML generation directly from Lean
 namespace DocVerificationBridge.StaticHtml
 
 open Lean DependencyAnalysis
-open scoped DocGen4.Jsx
-open DocGen4 (Html Hierarchy)
+open DocGen4 (Hierarchy)
 open DocGen4.Output (BaseHtmlM SiteBaseContext BibItem)
 
 /-! ## Configuration -/
@@ -84,8 +82,9 @@ structure ProcessingWarning where
 
 /-! ## HTML Helpers -/
 
-/-- Escape HTML special characters (delegates to doc-gen4's Html.escape) -/
-def escapeHtml (s : String) : String := DocGen4.Html.escape s
+/-- Escape the HTML special characters `&`, `<`, `>` and `"`. -/
+def escapeHtml (s : String) : String :=
+  s.replace "&" "&amp;" |>.replace "<" "&lt;" |>.replace ">" "&gt;" |>.replace "\"" "&quot;"
 
 /-- Process bold markdown: **text** → <strong>text</strong> -/
 def processBoldMarkdown (input : String) : String :=
@@ -675,33 +674,33 @@ def baseHtml (title : String) (content : Html) (cfg : StaticHtmlConfig)
   let slashPrefix := if pathPrefix.isEmpty then "" else pathPrefix ++ "/"
   let breadcrumbItems : Array Html := breadcrumbs.toArray.map fun (name, url) =>
     if url.isEmpty then Html.text name
-    else Html.element "span" true #[] #[
-      Html.element "a" true #[("href", url)] #[Html.text name],
+    else Html.element "span" #[] #[
+      Html.element "a" #[("href", url)] #[Html.text name],
       Html.text " / "
     ]
   let breadcrumbNav : Array Html :=
     if breadcrumbs.isEmpty then #[]
-    else #[Html.element "nav" false #[("class", "breadcrumbs")] breadcrumbItems]
+    else #[Html.element "nav" #[("class", "breadcrumbs")] breadcrumbItems]
 
-  Html.element "html" false #[("lang", "en")] #[
-    Html.element "head" false #[] #[
-      Html.element "meta" true #[("charset", "UTF-8")] #[],
-      Html.element "meta" true #[("name", "viewport"), ("content", "width=device-width, initial-scale=1.0")] #[],
-      Html.element "title" true #[] #[Html.text s!"{title} - {cfg.projectName} Verification"],
-      Html.element "link" true #[("rel", "stylesheet"), ("href", s!"{slashPrefix}style.css")] #[],
-      Html.element "script" true #[("defer", "true"), ("src", s!"{slashPrefix}verification.js")] #[]
+  Html.element "html" #[("lang", "en")] #[
+    Html.element "head" #[] #[
+      Html.element "meta" #[("charset", "UTF-8")] .empty,
+      Html.element "meta" #[("name", "viewport"), ("content", "width=device-width, initial-scale=1.0")] .empty,
+      Html.element "title" #[] #[Html.text s!"{title} - {cfg.projectName} Verification"],
+      Html.element "link" #[("rel", "stylesheet"), ("href", s!"{slashPrefix}style.css")] .empty,
+      Html.element "script" #[("defer", "true"), ("src", s!"{slashPrefix}verification.js")] .empty
     ],
-    Html.element "body" false #[] #[
-      Html.element "header" false #[] <| #[
-        Html.element "h1" true #[] #[Html.text s!"{cfg.projectName} Verification Report"],
-        Html.element "nav" false #[] #[
-          Html.element "a" true #[("href", s!"{slashPrefix}index.html")] #[Html.text "Overview"],
-          Html.element "a" true #[("href", s!"{slashPrefix}modules/index.html")] #[Html.text "Modules"],
-          Html.element "a" true #[("href", s!"{slashPrefix}search.html")] #[Html.text "Search"],
-          Html.element "a" true #[("href", s!"{slashPrefix}{cfg.apiBaseUrl}/index.html")] #[Html.text "API Docs"]
+    Html.element "body" #[] #[
+      Html.element "header" #[] <| #[
+        Html.element "h1" #[] #[Html.text s!"{cfg.projectName} Verification Report"],
+        Html.element "nav" #[] #[
+          Html.element "a" #[("href", s!"{slashPrefix}index.html")] #[Html.text "Overview"],
+          Html.element "a" #[("href", s!"{slashPrefix}modules/index.html")] #[Html.text "Modules"],
+          Html.element "a" #[("href", s!"{slashPrefix}search.html")] #[Html.text "Search"],
+          Html.element "a" #[("href", s!"{slashPrefix}{cfg.apiBaseUrl}/index.html")] #[Html.text "API Docs"]
         ]
       ] ++ breadcrumbNav,
-      Html.element "main" false #[] #[content]
+      Html.element "main" #[] #[content]
     ]
   ]
 
@@ -722,18 +721,18 @@ def generateNavTree (modules : List String) : BaseHtmlM Html := pure <| Id.run d
 
   let items := grouped.map fun (modPrefix, mods) =>
     if modPrefix.isEmpty then
-      Html.element "li" false #[] <| mods.reverse.toArray.map fun m =>
-        Html.element "a" true #[("href", s!"modules/{m.replace "." "_"}.html")] #[Html.text m]
+      Html.element "li" #[] <| Html.ofArray <| mods.reverse.toArray.map fun (m : String) =>
+        Html.element "a" #[("href", s!"modules/{m.replace "." "_"}.html")] #[Html.text m]
     else
-      Html.element "li" false #[("class", "nav-group")] #[
-        Html.element "span" true #[("class", "nav-toggle")] #[Html.text modPrefix],
-        Html.element "ul" false #[] <| mods.reverse.toArray.map fun m =>
-          Html.element "li" false #[] #[
-            Html.element "a" true #[("href", s!"modules/{m.replace "." "_"}.html")] #[Html.text m]
+      Html.element "li" #[("class", "nav-group")] #[
+        Html.element "span" #[("class", "nav-toggle")] #[Html.text modPrefix],
+        Html.element "ul" #[] <| Html.ofArray <| mods.reverse.toArray.map fun (m : String) =>
+          Html.element "li" #[] #[
+            Html.element "a" #[("href", s!"modules/{m.replace "." "_"}.html")] #[Html.text m]
           ]
       ]
 
-  return Html.element "ul" false #[("class", "nav-tree")] items.toArray
+  return Html.element "ul" #[("class", "nav-tree")] items.toArray
 
 /-! ## Page Generators -/
 
@@ -868,28 +867,28 @@ def generateDownloadsSectionIO (dataDir : System.FilePath) : IO Html := do
   let mut items : Array Html := #[]
 
   if let some size := jsonSize then
-    items := items.push <| Html.element "li" false #[] #[
-      Html.element "a" true #[("href", "../classification-cache.json"), ("download", "")] #[
+    items := items.push <| Html.element "li" #[] #[
+      Html.element "a" #[("href", "../classification-cache.json"), ("download", "")] #[
         Html.text "📄 classification-cache.json"
       ],
       Html.text s!" ({formatFileSize size}) — Classification metadata"
     ]
 
   if let some size := jsonlSize then
-    items := items.push <| Html.element "li" false #[] #[
-      Html.element "a" true #[("href", "../classification-cache.jsonl"), ("download", "")] #[
+    items := items.push <| Html.element "li" #[] #[
+      Html.element "a" #[("href", "../classification-cache.jsonl"), ("download", "")] #[
         Html.text "📄 classification-cache.jsonl"
       ],
       Html.text s!" ({formatFileSize size}) — Full classification data",
-      Html.element "br" true #[] #[],
-      Html.element "small" true #[("style", "color: #888;")] #[
+      Html.element "br" #[] .empty,
+      Html.element "small" #[("style", "color: #888;")] #[
         Html.text "⚠️ Note: This is a Git LFS file; download may be large"
       ]
     ]
 
   if let some size := yamlSize then
-    items := items.push <| Html.element "li" false #[] #[
-      Html.element "a" true #[("href", "../commands.yaml"), ("download", "")] #[
+    items := items.push <| Html.element "li" #[] #[
+      Html.element "a" #[("href", "../commands.yaml"), ("download", "")] #[
         Html.text "📋 commands.yaml"
       ],
       Html.text s!" ({formatFileSize size}) — Build commands log"
@@ -898,10 +897,10 @@ def generateDownloadsSectionIO (dataDir : System.FilePath) : IO Html := do
   if items.isEmpty then
     return Html.text ""
   else
-    return Html.element "section" false #[("class", "downloads")] #[
-      Html.element "h2" true #[] #[Html.text "Downloads"],
-      Html.element "p" true #[] #[Html.text "Data files for this project:"],
-      Html.element "ul" false #[] items
+    return Html.element "section" #[("class", "downloads")] #[
+      Html.element "h2" #[] #[Html.text "Downloads"],
+      Html.element "p" #[] #[Html.text "Data files for this project:"],
+      Html.element "ul" #[] items
     ]
 
 /-- Generate project info section showing config.toml settings -/
@@ -911,37 +910,37 @@ def generateProjectInfoSection (cfg : StaticHtmlConfig) : Html :=
     Html.text ""
   else
     let descHtml := match cfg.projectDescription with
-      | some desc => Html.element "p" true #[] #[Html.text desc]
+      | some desc => Html.element "p" #[] #[Html.text desc]
       | none => Html.text ""
 
     let modulesHtml := if cfg.projectModules.isEmpty then Html.text ""
-      else Html.element "p" true #[] #[
-        Html.element "strong" true #[] #[Html.text "Modules: "],
+      else Html.element "p" #[] #[
+        Html.element "strong" #[] #[Html.text "Modules: "],
         Html.text (String.intercalate ", " cfg.projectModules.toList)
       ]
 
-    let repoHtml := Html.element "p" true #[] #[
-      Html.element "strong" true #[] #[Html.text "Repository: "],
-      Html.element "a" true #[("href", cfg.repoUrl), ("target", "_blank")] #[Html.text cfg.repoUrl]
+    let repoHtml := Html.element "p" #[] #[
+      Html.element "strong" #[] #[Html.text "Repository: "],
+      Html.element "a" #[("href", cfg.repoUrl), ("target", "_blank")] #[Html.text cfg.repoUrl]
     ]
 
     let settingsHtml := if cfg.projectSettings.isEmpty then Html.text ""
       else
         let settingItems := cfg.projectSettings.map fun (k, v) =>
-          Html.element "li" false #[] #[
-            Html.element "code" true #[] #[Html.text k],
+          Html.element "li" #[] #[
+            Html.element "code" #[] #[Html.text k],
             Html.text ": ",
-            Html.element "code" true #[] #[Html.text v]
+            Html.element "code" #[] #[Html.text v]
           ]
-        Html.element "details" false #[] #[
-          Html.element "summary" true #[("style", "cursor: pointer; color: #4ecdc4;")] #[
+        Html.element "details" #[] #[
+          Html.element "summary" #[("style", "cursor: pointer; color: #4ecdc4;")] #[
             Html.text "Analysis settings"
           ],
-          Html.element "ul" false #[("style", "margin-top: 10px;")] settingItems
+          Html.element "ul" #[("style", "margin-top: 10px;")] settingItems
         ]
 
-    Html.element "section" false #[("class", "project-info")] #[
-      Html.element "h2" true #[] #[Html.text "Project Info"],
+    Html.element "section" #[("class", "project-info")] #[
+      Html.element "h2" #[] #[Html.text "Project Info"],
       descHtml,
       repoHtml,
       modulesHtml,
@@ -968,161 +967,161 @@ def generateIndexPage (stats : VerificationStats) (cfg : StaticHtmlConfig)
   -- Total types = mathAbstractions + compDatatypes
   let totalTypes := stats.mathAbstractions + stats.compDatatypes
 
-  let content := Html.element "div" false #[("class", "container")] #[
-    Html.element "h1" true #[] #[Html.text "Verification Overview"],
+  let content := Html.element "div" #[("class", "container")] #[
+    Html.element "h1" #[] #[Html.text "Verification Overview"],
 
-    Html.element "section" false #[("class", "stats-summary")] #[
-      Html.element "h2" true #[] #[Html.text "Summary"],
-      Html.element "table" false #[] #[
-        Html.element "tr" false #[] #[
-          Html.element "th" true #[] #[Html.text "Metric"],
-          Html.element "th" true #[] #[Html.text "Count"],
-          Html.element "th" true #[] #[Html.text "Percentage"]
+    Html.element "section" #[("class", "stats-summary")] #[
+      Html.element "h2" #[] #[Html.text "Summary"],
+      Html.element "table" #[] #[
+        Html.element "tr" #[] #[
+          Html.element "th" #[] #[Html.text "Metric"],
+          Html.element "th" #[] #[Html.text "Count"],
+          Html.element "th" #[] #[Html.text "Percentage"]
         ],
-        Html.element "tr" false #[] #[
-          Html.element "td" true #[] #[Html.text "Total Declarations"],
-          Html.element "td" true #[] #[Html.text (toString stats.totalDecls)],
-          Html.element "td" true #[] #[Html.text "-"]
+        Html.element "tr" #[] #[
+          Html.element "td" #[] #[Html.text "Total Declarations"],
+          Html.element "td" #[] #[Html.text (toString stats.totalDecls)],
+          Html.element "td" #[] #[Html.text "-"]
         ],
-        Html.element "tr" false #[] #[
-          Html.element "td" true #[] #[Html.text "Total Modules"],
-          Html.element "td" true #[] #[Html.text (toString stats.totalModules)],
-          Html.element "td" true #[] #[Html.text "-"]
+        Html.element "tr" #[] #[
+          Html.element "td" #[] #[Html.text "Total Modules"],
+          Html.element "td" #[] #[Html.text (toString stats.totalModules)],
+          Html.element "td" #[] #[Html.text "-"]
         ],
-        Html.element "tr" false #[] #[
-          Html.element "td" true #[] #[Html.text "Theorems (Total)"],
-          Html.element "td" true #[] #[Html.text (toString stats.theorems)],
-          Html.element "td" true #[] #[Html.text "-"]
+        Html.element "tr" #[] #[
+          Html.element "td" #[] #[Html.text "Theorems (Total)"],
+          Html.element "td" #[] #[Html.text (toString stats.theorems)],
+          Html.element "td" #[] #[Html.text "-"]
         ],
-        Html.element "tr" false #[] #[
-          Html.element "td" true #[("class", "indent")] #[Html.text "✓ Fully Proved"],
-          Html.element "td" true #[] #[Html.text (toString stats.provedTheorems)],
-          Html.element "td" true #[] #[Html.text s!"{provedPct}%"]
+        Html.element "tr" #[] #[
+          Html.element "td" #[("class", "indent")] #[Html.text "✓ Fully Proved"],
+          Html.element "td" #[] #[Html.text (toString stats.provedTheorems)],
+          Html.element "td" #[] #[Html.text s!"{provedPct}%"]
         ],
-        Html.element "tr" false #[] #[
-          Html.element "td" true #[("class", "indent")] #[Html.text "⚠ Uses Axioms"],
-          Html.element "td" true #[] #[Html.text (toString stats.axiomTheorems)],
-          Html.element "td" true #[] #[Html.text s!"{axiomPct}%"]
+        Html.element "tr" #[] #[
+          Html.element "td" #[("class", "indent")] #[Html.text "⚠ Uses Axioms"],
+          Html.element "td" #[] #[Html.text (toString stats.axiomTheorems)],
+          Html.element "td" #[] #[Html.text s!"{axiomPct}%"]
         ],
-        Html.element "tr" false #[] #[
-          Html.element "td" true #[("class", "indent")] #[Html.text "✗ Has Sorry"],
-          Html.element "td" true #[] #[Html.text (toString stats.sorryTheorems)],
-          Html.element "td" true #[] #[Html.text s!"{sorryPct}%"]
+        Html.element "tr" #[] #[
+          Html.element "td" #[("class", "indent")] #[Html.text "✗ Has Sorry"],
+          Html.element "td" #[] #[Html.text (toString stats.sorryTheorems)],
+          Html.element "td" #[] #[Html.text s!"{sorryPct}%"]
         ],
-        Html.element "tr" false #[] #[
-          Html.element "td" true #[] #[Html.text "Definitions with Sorry"],
-          Html.element "td" true #[] #[Html.text (toString stats.sorryDefinitions)],
-          Html.element "td" true #[] #[Html.text "-"]
+        Html.element "tr" #[] #[
+          Html.element "td" #[] #[Html.text "Definitions with Sorry"],
+          Html.element "td" #[] #[Html.text (toString stats.sorryDefinitions)],
+          Html.element "td" #[] #[Html.text "-"]
         ]
       ]
     ],
 
-    Html.element "section" false #[("class", "progress-section")] #[
-      Html.element "h2" true #[] #[Html.text "Theorem Verification Progress"],
-      Html.element "div" false #[("class", "progress-bar")] #[
-        Html.element "div" true #[("class", "progress-fill progress-proved"), ("style", s!"width: {provedPct}%")] #[],
-        Html.element "div" true #[("class", "progress-fill progress-axiom"), ("style", s!"width: {axiomPct}%")] #[],
-        Html.element "div" true #[("class", "progress-fill progress-sorry"), ("style", s!"width: {sorryPct}%")] #[]
+    Html.element "section" #[("class", "progress-section")] #[
+      Html.element "h2" #[] #[Html.text "Theorem Verification Progress"],
+      Html.element "div" #[("class", "progress-bar")] #[
+        Html.element "div" #[("class", "progress-fill progress-proved"), ("style", s!"width: {provedPct}%")] .empty,
+        Html.element "div" #[("class", "progress-fill progress-axiom"), ("style", s!"width: {axiomPct}%")] .empty,
+        Html.element "div" #[("class", "progress-fill progress-sorry"), ("style", s!"width: {sorryPct}%")] .empty
       ],
-      Html.element "div" false #[("class", "progress-legend")] #[
-        Html.element "span" true #[] #[
-          Html.element "span" true #[("class", "badge badge-proved")] #[Html.text "Proved"],
+      Html.element "div" #[("class", "progress-legend")] #[
+        Html.element "span" #[] #[
+          Html.element "span" #[("class", "badge badge-proved")] #[Html.text "Proved"],
           Html.text s!" {stats.provedTheorems}"
         ],
-        Html.element "span" true #[] #[
-          Html.element "span" true #[("class", "badge badge-axiom")] #[Html.text "Axiom"],
+        Html.element "span" #[] #[
+          Html.element "span" #[("class", "badge badge-axiom")] #[Html.text "Axiom"],
           Html.text s!" {stats.axiomTheorems}"
         ],
-        Html.element "span" true #[] #[
-          Html.element "span" true #[("class", "badge badge-sorry")] #[Html.text "Sorry"],
+        Html.element "span" #[] #[
+          Html.element "span" #[("class", "badge badge-sorry")] #[Html.text "Sorry"],
           Html.text s!" {stats.sorryTheorems}"
         ]
       ]
     ],
 
     -- Four-Category Ontology Table
-    Html.element "section" false #[("class", "ontology-section")] #[
-      Html.element "h2" true #[] #[Html.text "Four-Category Ontology"],
-      Html.element "p" true #[] #[Html.text "Classification of declarations based on E.J. Lowe's metaphysical framework."],
-      Html.element "table" false #[("class", "ontology-table")] #[
-        Html.element "thead" false #[] #[
-          Html.element "tr" false #[] #[
-            Html.element "th" true #[] #[Html.text ""],
-            Html.element "th" true #[] #[Html.text "Mathematical (Prop)"],
-            Html.element "th" true #[] #[Html.text "Computational (Data)"]
+    Html.element "section" #[("class", "ontology-section")] #[
+      Html.element "h2" #[] #[Html.text "Four-Category Ontology"],
+      Html.element "p" #[] #[Html.text "Classification of declarations based on E.J. Lowe's metaphysical framework."],
+      Html.element "table" #[("class", "ontology-table")] #[
+        Html.element "thead" #[] #[
+          Html.element "tr" #[] #[
+            Html.element "th" #[] #[Html.text ""],
+            Html.element "th" #[] #[Html.text "Mathematical (Prop)"],
+            Html.element "th" #[] #[Html.text "Computational (Data)"]
           ]
         ],
-        Html.element "tbody" false #[] #[
-          Html.element "tr" false #[] #[
-            Html.element "th" true #[] #[Html.text "Substantial (Types)"],
-            Html.element "td" true #[] #[Html.text s!"{stats.mathAbstractions} ({pct stats.mathAbstractions totalTypes}%)"],
-            Html.element "td" true #[] #[Html.text s!"{stats.compDatatypes} ({pct stats.compDatatypes totalTypes}%)"]
+        Html.element "tbody" #[] #[
+          Html.element "tr" #[] #[
+            Html.element "th" #[] #[Html.text "Substantial (Types)"],
+            Html.element "td" #[] #[Html.text s!"{stats.mathAbstractions} ({pct stats.mathAbstractions totalTypes}%)"],
+            Html.element "td" #[] #[Html.text s!"{stats.compDatatypes} ({pct stats.compDatatypes totalTypes}%)"]
           ],
-          Html.element "tr" false #[] #[
-            Html.element "th" true #[] #[Html.text "Non-substantial (Defs)"],
-            Html.element "td" true #[] #[Html.text s!"{stats.mathDefinitions} ({pct stats.mathDefinitions stats.definitions}%)"],
-            Html.element "td" true #[] #[Html.text s!"{stats.compOperations} ({pct stats.compOperations stats.definitions}%)"]
+          Html.element "tr" #[] #[
+            Html.element "th" #[] #[Html.text "Non-substantial (Defs)"],
+            Html.element "td" #[] #[Html.text s!"{stats.mathDefinitions} ({pct stats.mathDefinitions stats.definitions}%)"],
+            Html.element "td" #[] #[Html.text s!"{stats.compOperations} ({pct stats.compOperations stats.definitions}%)"]
           ]
         ]
       ]
     ],
 
     -- Theorem Taxonomy Table
-    Html.element "section" false #[("class", "taxonomy-section")] #[
-      Html.element "h2" true #[] #[Html.text "Theorem Taxonomy"],
-      Html.element "p" true #[] #[Html.text "Classification of theorems by what they prove."],
-      Html.element "table" false #[] #[
-        Html.element "thead" false #[] #[
-          Html.element "tr" false #[] #[
-            Html.element "th" true #[] #[Html.text "Theorem Kind"],
-            Html.element "th" true #[] #[Html.text "Count"],
-            Html.element "th" true #[] #[Html.text "Percentage"]
+    Html.element "section" #[("class", "taxonomy-section")] #[
+      Html.element "h2" #[] #[Html.text "Theorem Taxonomy"],
+      Html.element "p" #[] #[Html.text "Classification of theorems by what they prove."],
+      Html.element "table" #[] #[
+        Html.element "thead" #[] #[
+          Html.element "tr" #[] #[
+            Html.element "th" #[] #[Html.text "Theorem Kind"],
+            Html.element "th" #[] #[Html.text "Count"],
+            Html.element "th" #[] #[Html.text "Percentage"]
           ]
         ],
-        Html.element "tbody" false #[] #[
-          Html.element "tr" false #[] #[
-            Html.element "td" true #[] #[Html.text "mathematicalProperty"],
-            Html.element "td" true #[] #[Html.text (toString stats.mathematicalTheorems)],
-            Html.element "td" true #[] #[Html.text s!"{pct stats.mathematicalTheorems stats.theorems}%"]
+        Html.element "tbody" #[] #[
+          Html.element "tr" #[] #[
+            Html.element "td" #[] #[Html.text "mathematicalProperty"],
+            Html.element "td" #[] #[Html.text (toString stats.mathematicalTheorems)],
+            Html.element "td" #[] #[Html.text s!"{pct stats.mathematicalTheorems stats.theorems}%"]
           ],
-          Html.element "tr" false #[] #[
-            Html.element "td" true #[] #[Html.text "bridgingProperty"],
-            Html.element "td" true #[] #[Html.text (toString stats.bridgingTheorems)],
-            Html.element "td" true #[] #[Html.text s!"{pct stats.bridgingTheorems stats.theorems}%"]
+          Html.element "tr" #[] #[
+            Html.element "td" #[] #[Html.text "bridgingProperty"],
+            Html.element "td" #[] #[Html.text (toString stats.bridgingTheorems)],
+            Html.element "td" #[] #[Html.text s!"{pct stats.bridgingTheorems stats.theorems}%"]
           ],
-          Html.element "tr" false #[] #[
-            Html.element "td" true #[] #[Html.text "computationalProperty"],
-            Html.element "td" true #[] #[Html.text (toString stats.computationalTheorems)],
-            Html.element "td" true #[] #[Html.text s!"{pct stats.computationalTheorems stats.theorems}%"]
+          Html.element "tr" #[] #[
+            Html.element "td" #[] #[Html.text "computationalProperty"],
+            Html.element "td" #[] #[Html.text (toString stats.computationalTheorems)],
+            Html.element "td" #[] #[Html.text s!"{pct stats.computationalTheorems stats.theorems}%"]
           ],
-          Html.element "tr" false #[] #[
-            Html.element "td" true #[] #[Html.text "soundnessProperty"],
-            Html.element "td" true #[] #[Html.text (toString stats.soundnessTheorems)],
-            Html.element "td" true #[] #[Html.text s!"{pct stats.soundnessTheorems stats.theorems}%"]
+          Html.element "tr" #[] #[
+            Html.element "td" #[] #[Html.text "soundnessProperty"],
+            Html.element "td" #[] #[Html.text (toString stats.soundnessTheorems)],
+            Html.element "td" #[] #[Html.text s!"{pct stats.soundnessTheorems stats.theorems}%"]
           ],
-          Html.element "tr" false #[] #[
-            Html.element "td" true #[] #[Html.text "completenessProperty"],
-            Html.element "td" true #[] #[Html.text (toString stats.completenessTheorems)],
-            Html.element "td" true #[] #[Html.text s!"{pct stats.completenessTheorems stats.theorems}%"]
+          Html.element "tr" #[] #[
+            Html.element "td" #[] #[Html.text "completenessProperty"],
+            Html.element "td" #[] #[Html.text (toString stats.completenessTheorems)],
+            Html.element "td" #[] #[Html.text s!"{pct stats.completenessTheorems stats.theorems}%"]
           ],
-          Html.element "tr" false #[] #[
-            Html.element "td" true #[("class", "muted")] #[Html.text "unclassified"],
-            Html.element "td" true #[("class", "muted")] #[Html.text (toString stats.unclassifiedTheorems)],
-            Html.element "td" true #[("class", "muted")] #[Html.text s!"{pct stats.unclassifiedTheorems stats.theorems}%"]
+          Html.element "tr" #[] #[
+            Html.element "td" #[("class", "muted")] #[Html.text "unclassified"],
+            Html.element "td" #[("class", "muted")] #[Html.text (toString stats.unclassifiedTheorems)],
+            Html.element "td" #[("class", "muted")] #[Html.text s!"{pct stats.unclassifiedTheorems stats.theorems}%"]
           ]
         ]
       ]
     ],
 
-    Html.element "section" false #[] #[
-      Html.element "h2" true #[] #[Html.text "Quick Links"],
-      Html.element "ul" false #[] <| #[
-        Html.element "li" false #[] #[Html.element "a" true #[("href", "modules/index.html")] #[Html.text "Browse by Module"]],
-        Html.element "li" false #[] #[Html.element "a" true #[("href", "search.html")] #[Html.text "Search Declarations"]],
-        Html.element "li" false #[] #[Html.element "a" true #[("href", s!"{cfg.apiBaseUrl}/index.html")] #[Html.text "API Documentation"]]
+    Html.element "section" #[] #[
+      Html.element "h2" #[] #[Html.text "Quick Links"],
+      Html.element "ul" #[] <| #[
+        Html.element "li" #[] #[Html.element "a" #[("href", "modules/index.html")] #[Html.text "Browse by Module"]],
+        Html.element "li" #[] #[Html.element "a" #[("href", "search.html")] #[Html.text "Search Declarations"]],
+        Html.element "li" #[] #[Html.element "a" #[("href", s!"{cfg.apiBaseUrl}/index.html")] #[Html.text "API Documentation"]]
       ] ++ (if issuesCount > 0 then
-        #[Html.element "li" false #[] #[
-          Html.element "a" true #[("href", "issues.html"), ("class", "warning-link")] #[
+        #[Html.element "li" #[] #[
+          Html.element "a" #[("href", "issues.html"), ("class", "warning-link")] #[
             Html.text s!"⚠️ Processing Issues ({issuesCount})"
           ]
         ]]
@@ -1133,19 +1132,19 @@ def generateIndexPage (stats : VerificationStats) (cfg : StaticHtmlConfig)
   -- Build full content with project info and downloads sections
   let projectInfoHtml := generateProjectInfoSection cfg
   let sectionsHtml := match downloadsSection with
-    | some ds => Html.element "div" false #[] #[projectInfoHtml, ds]
+    | some ds => Html.element "div" #[] #[projectInfoHtml, ds]
     | none => projectInfoHtml
 
-  let fullContent := Html.element "div" false #[] #[content, sectionsHtml]
+  let fullContent := Html.element "div" #[] #[content, sectionsHtml]
 
   baseHtml "Overview" fullContent cfg
 
 /-- Generate the search page -/
 def generateSearchPage (cfg : StaticHtmlConfig) : BaseHtmlM Html := do
-  let content := Html.element "div" false #[("class", "container")] #[
-    Html.element "h1" true #[] #[Html.text "Search Declarations"],
-    Html.element "input" true #[("type", "text"), ("id", "search-input"), ("placeholder", "Search by name or module...")] #[],
-    Html.element "div" true #[("id", "search-results")] #[]
+  let content := Html.element "div" #[("class", "container")] #[
+    Html.element "h1" #[] #[Html.text "Search Declarations"],
+    Html.element "input" #[("type", "text"), ("id", "search-input"), ("placeholder", "Search by name or module...")] .empty,
+    Html.element "div" #[("id", "search-results")] .empty
   ]
 
   baseHtml "Search" content cfg
@@ -1158,30 +1157,30 @@ def generateModuleIndexPage (moduleReports : Array (String × String × ModuleSt
   let rows := sortedReports.map fun (safeFilename, _, stats) =>
     let totalSorry := stats.defsWithSorry + stats.theoremsWithSorry
     let sorryBadge := if totalSorry > 0
-      then Html.element "span" true #[("class", "badge badge-sorry")] #[Html.text (toString totalSorry)]
+      then Html.element "span" #[("class", "badge badge-sorry")] #[Html.text (toString totalSorry)]
       else Html.text ""
-    Html.element "tr" false #[] #[
-      Html.element "td" false #[] #[
-        Html.element "a" true #[("href", s!"{safeFilename}.html")] #[Html.text stats.filePath]
+    Html.element "tr" #[] #[
+      Html.element "td" #[] #[
+        Html.element "a" #[("href", s!"{safeFilename}.html")] #[Html.text stats.filePath]
       ],
-      Html.element "td" false #[] #[Html.text (toString stats.totalDefs)],
-      Html.element "td" false #[] #[Html.text (toString stats.totalTheorems)],
-      Html.element "td" false #[] #[sorryBadge]
+      Html.element "td" #[] #[Html.text (toString stats.totalDefs)],
+      Html.element "td" #[] #[Html.text (toString stats.totalTheorems)],
+      Html.element "td" #[] #[sorryBadge]
     ]
 
-  let content := Html.element "div" false #[("class", "container")] #[
-    Html.element "h1" true #[] #[Html.text "Modules"],
-    Html.element "p" true #[] #[Html.text s!"{sortedReports.size} modules"],
-    Html.element "table" false #[] #[
-      Html.element "thead" false #[] #[
-        Html.element "tr" false #[] #[
-          Html.element "th" true #[] #[Html.text "Module"],
-          Html.element "th" true #[] #[Html.text "Definitions"],
-          Html.element "th" true #[] #[Html.text "Theorems"],
-          Html.element "th" true #[] #[Html.text "Sorry"]
+  let content := Html.element "div" #[("class", "container")] #[
+    Html.element "h1" #[] #[Html.text "Modules"],
+    Html.element "p" #[] #[Html.text s!"{sortedReports.size} modules"],
+    Html.element "table" #[] #[
+      Html.element "thead" #[] #[
+        Html.element "tr" #[] #[
+          Html.element "th" #[] #[Html.text "Module"],
+          Html.element "th" #[] #[Html.text "Definitions"],
+          Html.element "th" #[] #[Html.text "Theorems"],
+          Html.element "th" #[] #[Html.text "Sorry"]
         ]
       ],
-      Html.element "tbody" false #[] rows
+      Html.element "tbody" #[] rows
     ]
   ]
 
@@ -1276,50 +1275,50 @@ private def wrapModuleHtml (moduleName : String) (markdownContent : String) (cfg
 
 /-- Generate the processing issues page showing declarations that couldn't be fully analyzed -/
 def generateProcessingIssuesPage (warnings : Array ProcessingWarning) (cfg : StaticHtmlConfig) : BaseHtmlM Html := do
-  let content := Html.element "div" false #[("class", "container")] #[
-    Html.element "h1" true #[] #[Html.text "Processing Issues"],
-    Html.element "p" true #[] #[
+  let content := Html.element "div" #[("class", "container")] #[
+    Html.element "h1" #[] #[Html.text "Processing Issues"],
+    Html.element "p" #[] #[
       Html.text s!"During documentation generation, {warnings.size} declaration(s) couldn't be fully analyzed. ",
       Html.text "These issues are typically due to complex type class instances or unusual declaration patterns."
     ],
 
     if warnings.isEmpty then
-      Html.element "p" true #[("class", "success")] #[Html.text "✅ No processing issues detected."]
+      Html.element "p" #[("class", "success")] #[Html.text "✅ No processing issues detected."]
     else
-      Html.element "div" false #[] #[
-        Html.element "table" false #[("class", "stats-table")] #[
-          Html.element "thead" false #[] #[
-            Html.element "tr" false #[] #[
-              Html.element "th" true #[] #[Html.text "Declaration"],
-              Html.element "th" true #[] #[Html.text "Position"],
-              Html.element "th" true #[] #[Html.text "Error Message"]
+      Html.element "div" #[] #[
+        Html.element "table" #[("class", "stats-table")] #[
+          Html.element "thead" #[] #[
+            Html.element "tr" #[] #[
+              Html.element "th" #[] #[Html.text "Declaration"],
+              Html.element "th" #[] #[Html.text "Position"],
+              Html.element "th" #[] #[Html.text "Error Message"]
             ]
           ],
-          Html.element "tbody" false #[] (warnings.map fun warning =>
-            Html.element "tr" false #[] #[
-              Html.element "td" true #[("class", "decl-name")] #[
-                Html.element "code" true #[] #[Html.text warning.declName.toString]
+          Html.element "tbody" #[] (warnings.map fun warning =>
+            Html.element "tr" #[] #[
+              Html.element "td" #[("class", "decl-name")] #[
+                Html.element "code" #[] #[Html.text warning.declName.toString]
               ],
-              Html.element "td" true #[] #[Html.text (warning.position.getD "-")],
-              Html.element "td" true #[("class", "error-msg")] #[
-                Html.element "pre" true #[] #[Html.text warning.message]
+              Html.element "td" #[] #[Html.text (warning.position.getD "-")],
+              Html.element "td" #[("class", "error-msg")] #[
+                Html.element "pre" #[] #[Html.text warning.message]
               ]
             ]
           )
         ],
-        Html.element "section" false #[] #[
-          Html.element "h2" true #[] #[Html.text "What This Means"],
-          Html.element "ul" false #[] #[
-            Html.element "li" false #[] #[Html.text "These declarations still appear in the documentation, but may be missing some metadata."],
-            Html.element "li" false #[] #[Html.text "The most common cause is instance declarations where the target class can't be determined."],
-            Html.element "li" false #[] #[Html.text "This usually indicates a bug in doc-gen4 or an unusual declaration pattern."]
+        Html.element "section" #[] #[
+          Html.element "h2" #[] #[Html.text "What This Means"],
+          Html.element "ul" #[] #[
+            Html.element "li" #[] #[Html.text "These declarations still appear in the documentation, but may be missing some metadata."],
+            Html.element "li" #[] #[Html.text "The most common cause is instance declarations where the target class can't be determined."],
+            Html.element "li" #[] #[Html.text "This usually indicates a bug in doc-gen4 or an unusual declaration pattern."]
           ]
         ],
-        Html.element "section" false #[] #[
-          Html.element "h2" true #[] #[Html.text "Reporting Issues"],
-          Html.element "p" true #[] #[
+        Html.element "section" #[] #[
+          Html.element "h2" #[] #[Html.text "Reporting Issues"],
+          Html.element "p" #[] #[
             Html.text "If you believe these declarations should be fully analyzed, please ",
-            Html.element "a" true #[("href", "https://github.com/leanprover/doc-gen4/issues")] #[Html.text "report an issue to doc-gen4"],
+            Html.element "a" #[("href", "https://github.com/leanprover/doc-gen4/issues")] #[Html.text "report an issue to doc-gen4"],
             Html.text " with the declaration name and project information."
           ]
         ]
@@ -1359,11 +1358,11 @@ def generateStaticSite (cfg : StaticHtmlConfig)
   -- Generate and write index page
   IO.println s!"  Generating index page..."
   let indexHtml := runBaseHtmlM (generateIndexPage stats cfg downloadsSection processingWarnings.size) cfg.outputDir
-  IO.FS.writeFile (cfg.outputDir / "index.html") indexHtml.toString
+  IO.FS.writeFile (cfg.outputDir / "index.html") indexHtml.render
 
   -- Generate search page
   let searchHtml := runBaseHtmlM (generateSearchPage cfg) cfg.outputDir
-  IO.FS.writeFile (cfg.outputDir / "search.html") searchHtml.toString
+  IO.FS.writeFile (cfg.outputDir / "search.html") searchHtml.render
 
   -- Generate search index
   IO.println s!"  Generating search index..."
@@ -1379,13 +1378,13 @@ def generateStaticSite (cfg : StaticHtmlConfig)
 
   -- Generate module index
   let moduleIndexHtml := runBaseHtmlM (generateModuleIndexPage moduleReports cfg) cfg.outputDir
-  IO.FS.writeFile (cfg.outputDir / "modules" / "index.html") moduleIndexHtml.toString
+  IO.FS.writeFile (cfg.outputDir / "modules" / "index.html") moduleIndexHtml.render
 
   -- Generate processing issues page (if there are any warnings)
   if processingWarnings.size > 0 then
     IO.println s!"  Generating processing issues page ({processingWarnings.size} issues)..."
     let issuesHtml := runBaseHtmlM (generateProcessingIssuesPage processingWarnings cfg) cfg.outputDir
-    IO.FS.writeFile (cfg.outputDir / "issues.html") issuesHtml.toString
+    IO.FS.writeFile (cfg.outputDir / "issues.html") issuesHtml.render
 
   -- Generate individual module pages (parallel)
   IO.println s!"  Generating {moduleReports.size} module pages ({cfg.workers} workers)..."

@@ -147,6 +147,9 @@ fi
 [[ -d /lib ]] && BWRAP_OPTS+=(--ro-bind /lib /lib)
 [[ -d /lib64 ]] && BWRAP_OPTS+=(--ro-bind /lib64 /lib64)
 
+# Debian/Ubuntu resolve /usr/bin/cc through /etc/alternatives
+[[ -d /etc/alternatives ]] && BWRAP_OPTS+=(--ro-bind /etc/alternatives /etc/alternatives)
+
 # Add ca-certificates if directory exists
 [[ -d /etc/ca-certificates ]] && BWRAP_OPTS+=(--ro-bind /etc/ca-certificates /etc/ca-certificates)
 [[ -d /etc/pki ]] && BWRAP_OPTS+=(--ro-bind /etc/pki /etc/pki)  # Fedora/RHEL
